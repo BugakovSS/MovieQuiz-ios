@@ -2,57 +2,54 @@ import UIKit
 
 
 
-final class MovieQuizViewController: UIViewController {
+final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     private var currentQuestionIndex = 0
     private var correctAnswers = 0
     
+    private let questionsAmount: Int = 10
+    private var questionFactory: QuestionFactoryProtocol?
+    private var currentQuestion: QuizQuestion?
+    
+    private var alertPresenter: AlertPresenterProtocol?
+    
+    private var statitisticServices: StatisticServiceProtocol?
+    
     @IBOutlet private var counterLabel: UILabel!
     @IBOutlet private var imageView: UIImageView!
     @IBOutlet private var textLabel: UILabel!
-    
-    struct QuizQuestion {
-      let image: String
-      let text: String
-      let correctAnswer: Bool
-    }
-    
-    struct QuizStepViewModel {
-      let image: UIImage
-      let question: String
-      let questionNumber: String
-    }
-    
-    struct QuizResultsViewModel {
-      let title: String
-      let text: String
-      let buttonText: String
-    }
-    
-    
-    private let questions: [QuizQuestion] = [
-        QuizQuestion(image: "The Godfather", text: "Рейтинг этого фильма больше чем 6?", correctAnswer: true),
-        QuizQuestion(image: "The Dark Knight", text: "Рейтинг этого фильма больше чем 6?", correctAnswer: true),
-        QuizQuestion(image: "Kill Bill", text: "Рейтинг этого фильма больше чем 6?", correctAnswer: true),
-        QuizQuestion(image: "The Avengers", text: "Рейтинг этого фильма больше чем 6?", correctAnswer: true),
-        QuizQuestion(image: "Deadpool", text: "Рейтинг этого фильма больше чем 6?", correctAnswer: true),
-        QuizQuestion(image: "The Green Knight", text: "Рейтинг этого фильма больше чем 6?", correctAnswer: true),
-        QuizQuestion(image: "Old", text: "Рейтинг этого фильма больше чем 6?", correctAnswer: false),
-        QuizQuestion(image: "The Ice Age Adventures of Buck Wild", text: "Рейтинг этого фильма больше чем 6?", correctAnswer: false),
-        QuizQuestion(image: "Tesla", text: "Рейтинг этого фильма больше чем 6?", correctAnswer: false),
-        QuizQuestion(image: "Vivarium", text: "Рейтинг этого фильма больше чем 6?", correctAnswer: false)
-    ]
-    
+        
     override func viewDidLoad() {
         super.viewDidLoad()
-        show(quiz: convert(model: questions[currentQuestionIndex]))
+        
+        alertPresenter = AlertPresenterImpl(viewController: self)
+        statitisticServices = StatisticServiceImpl()
+        
+        var questionFactory = QuestionFactory()
+        questionFactory.delegate = self
+        questionFactory.requestNextQuestion()
+    }
+    
+    // MARK: - QuestionFactoryDelegate
+
+    func didReceiveNextQuestion(question: QuizQuestion?) {
+        guard let question = question else {
+            return
+        }
+            currentQuestion = question
+            let viewModel = convert(model: question)
+        
+            DispatchQueue.main.async { [weak self] in
+                self?.show(quiz: viewModel)
+        }
+        
     }
     
     private func convert(model: QuizQuestion) -> QuizStepViewModel {
         let questionStep = QuizStepViewModel(
                 image: UIImage(named: model.image) ?? UIImage(),
                 question: model.text,
-                questionNumber: "\(currentQuestionIndex + 1)/\(questions.count)")
+                questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)")
             return questionStep
     }
     
@@ -69,7 +66,8 @@ final class MovieQuizViewController: UIViewController {
             imageView.layer.borderColor = UIColor.ypGreen.cgColor
             correctAnswers += 1
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {[weak self] in
+                guard let self = self else {return}
                 self.imageView.layer.borderWidth = 0
                 self.showNextQuestionOrResults()
             }
@@ -79,7 +77,8 @@ final class MovieQuizViewController: UIViewController {
             imageView.layer.borderWidth = 8
             imageView.layer.borderColor = UIColor.ypRed.cgColor
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                guard let self = self else {return}
                 self.imageView.layer.borderWidth = 0
                 self.showNextQuestionOrResults()
             }
@@ -88,44 +87,71 @@ final class MovieQuizViewController: UIViewController {
     
 
     private func showNextQuestionOrResults() {
-        if currentQuestionIndex == questions.count - 1 {
-            showResult(quiz: QuizResultsViewModel(title: "Этот раунд окончен!", text: "Ваш результат: \(correctAnswers)", buttonText: "Сыграть ещё раз"))
+        if currentQuestionIndex == questionsAmount - 1 {
+//            showResult(quiz: QuizResultsViewModel(title: "Этот раунд окончен!", text: "Ваш результат: \(correctAnswers)", buttonText: "Сыграть ещё раз"))
+            showFinalResults()
         } else {
             currentQuestionIndex += 1
-            show(quiz: convert(model: questions[currentQuestionIndex]))
+            let questionFactory = QuestionFactory()
+            questionFactory.delegate = self
+            questionFactory.requestNextQuestion()
+
         }
     }
     
-    private func showResult(quiz result: QuizResultsViewModel) {
-        let alert = UIAlertController(
-            title: result.title,
-            message: result.text,
-            preferredStyle: .alert)
+    private func showFinalResults() {
         
-        let action = UIAlertAction(title: result.buttonText, style: .default) { _ in
-            
-            self.correctAnswers = 0
-            self.currentQuestionIndex = 0
-            
-            self.show(quiz: self.convert(model: self.questions[self.currentQuestionIndex]))
-            
-        }
+        statitisticServices?.store(correct: correctAnswers, total: questionsAmount)
         
-        alert.addAction(action)
-
-        self.present(alert, animated: true, completion: nil)
+        let alertModel = AlertModel(
+            title: "Этот раунд окончен!",
+            message: makeTextMessage(),
+            buttonText: "Сыграть ещё раз",
+            completion: { [weak self] in
+                self?.correctAnswers = 0
+                self?.currentQuestionIndex = 0
+                let questionFactory = QuestionFactory()
+                questionFactory.delegate = self
+                questionFactory.requestNextQuestion()
+            }
+        )
+        alertPresenter?.show(alertModel: alertModel)
     }
+    
     
     @IBAction private func noButtonCliked(_ sender: UIButton) {
-        if questions[currentQuestionIndex].correctAnswer == false {
+        guard let currentQuestion = currentQuestion else {
+            return
+        }
+        if currentQuestion.correctAnswer == false {
             showAnswerResult(isCorrect: true)
         } else {showAnswerResult(isCorrect: false)}
     }
     
     @IBAction private func yesButtonCliked(_ sender: UIButton) {
-        if questions[currentQuestionIndex].correctAnswer == true {
+        guard let currentQuestion = currentQuestion else {
+            return
+        }
+        if currentQuestion.correctAnswer == true {
             showAnswerResult(isCorrect: true)
         } else {showAnswerResult(isCorrect: false)}
+    }
+    
+    private func makeTextMessage() -> String {
+        guard let staticServices = statitisticServices, let bestGame = staticServices.bestGame else {
+            assertionFailure("error message")
+            return ""
+        }
+        
+        let totalPlaysCount = "Количество сыгранных квизов: \(staticServices.gamesCount)"
+        let currentGameResult = "Ваш результат: \(correctAnswers)\\\(questionsAmount))"
+        let bestGameInfo = "Рекорд \(bestGame.correct)\\\(bestGame.total) "
+        + "(\(bestGame.date.dateTimeString))"
+        let averageAccuracyLine = "Средняя точность: \(String(format: "%.2f", staticServices.totalAccurancy))%"
+        
+        let resultMessage =  [currentGameResult, totalPlaysCount, bestGameInfo, averageAccuracyLine].joined(separator: "\n")
+        
+        return resultMessage
     }
 }
 
