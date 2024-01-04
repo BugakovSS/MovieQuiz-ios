@@ -27,23 +27,10 @@ extension AlertPresenterImpl: AlertPresenterProtocol {
         let action = UIAlertAction(title: alertModel.buttonText, style: .default) {  _ in
             alertModel.completion()
         }
+        
         alert.addAction(action)
         
         viewController?.present(alert, animated: true)
         
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
