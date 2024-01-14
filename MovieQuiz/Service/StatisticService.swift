@@ -93,7 +93,7 @@ extension StatisticServiceImpl: StatisticServiceProtocol {
            if currentBestGame.correct > previousBestGame.correct {
                 bestGame = currentBestGame
             } else {
-                bestGame = currentBestGame
+                bestGame = previousBestGame
             }
             
         }

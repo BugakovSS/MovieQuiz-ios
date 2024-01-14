@@ -22,7 +22,10 @@ extension AlertPresenterImpl: AlertPresenterProtocol {
         let alert = UIAlertController(
             title: alertModel.title,
             message: alertModel.message,
-            preferredStyle: .alert)
+            preferredStyle: .alert
+            )
+        
+        alert.view.accessibilityIdentifier = "Alert"
         
         let action = UIAlertAction(title: alertModel.buttonText, style: .default) {  _ in
             alertModel.completion()
@@ -31,6 +34,6 @@ extension AlertPresenterImpl: AlertPresenterProtocol {
         alert.addAction(action)
         
         viewController?.present(alert, animated: true)
-        
+            
     }
 }
