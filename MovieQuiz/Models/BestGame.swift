@@ -1,11 +1,4 @@
-//
-//  BestGame.swift
-//  MovieQuiz
-//
-//  Created by Admin on 20.12.2023.
-//
-
-import Foundation
+import UIKit
 
 struct GameRecord: Codable {
     let correct: Int

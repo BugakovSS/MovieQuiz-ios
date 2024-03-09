@@ -1,11 +1,4 @@
-//
-//  MovieQuizPresenter.swift
-//  MovieQuiz
-//
-//  Created by Admin on 12.01.2024.
-//
 
-import Foundation
 import UIKit
 
 protocol MovieQuizViewControllerProtocol: AnyObject {
@@ -20,7 +13,7 @@ protocol MovieQuizViewControllerProtocol: AnyObject {
     func notHighlightImageBorder()
     
     func activateButton()
-    
+
     func showNetworkError(message: String)
 } 
 

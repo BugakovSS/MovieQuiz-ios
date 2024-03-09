@@ -1,11 +1,5 @@
-//
-//  MostPopularMovies.swift
-//  MovieQuiz
-//
-//  Created by Admin on 30.12.2023.
-//
 
-import Foundation
+import UIKit
 
 struct MostPopularMovies: Codable {
     let errorMessage: String
